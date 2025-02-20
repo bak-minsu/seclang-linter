@@ -17,7 +17,6 @@ This is the template in [Documenting architecture decisions - Michael Nygard](ht
 In each ADR file, write these sections:
 
 ```markdown
-
 # Title
 
 ## Status
