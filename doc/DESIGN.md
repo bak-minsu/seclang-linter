@@ -1,4 +1,10 @@
-# Design Specification
+# Design
+
+## Problem Statement
+
+[OWASP Coraza WAF](https://github.com/corazawaf/coraza) uses a configuration language called SecLang, which extends the OWASP Core Ruleset. This linter looks at given files written in Coraza's SecLang and validates the syntax. 
+
+## Design Specification
 
 For specifying design, this project uses Architecture decision records ([ADRs](https://github.com/joelparkerhenderson/architecture-decision-record?tab=readme-ov-file#how-to-start-using-adrs)).
 
