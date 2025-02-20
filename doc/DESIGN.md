@@ -12,6 +12,8 @@ Rather than specifying a large document that may eventually become obsolete, thi
 
 ## Template for ADRs
 
+ADRs will be written in Decison Record Templates by Michael Nygard.
+
 ```markdown
 # Decision record template by Michael Nygard
 
