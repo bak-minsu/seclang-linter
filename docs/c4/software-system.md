@@ -7,13 +7,17 @@ C4Context
 
         System(ci, "CI Automation", "Continuous Integration automation that checks for syntax errors in Coraza's SecLang")
 
-        System_Boundary(linter, "SecLang-Linter") {
+        System_Boundary(system, "SecLang-Linter") {
             System(linter, "seclang-linter", "A linter which finds syntax errors in Coraza's SecLang")
         }
 
-        Rel(admin, linter, "runs seclang-linter manually")
-        Rel(ci, linter, "runs seclang-linter when a commit or merge occurs")
-        Rel(linter, ci, "returns syntax results")
-        Rel(linter, admin, "returns syntax results")
+        Rel(admin, linter, "Runs")
+        Rel(ci, linter, "Runs")
     }
+
+    UpdateElementStyle(enterprise, $fontColor="white", $borderColor="white")
+    UpdateElementStyle(system, $fontColor="white", $borderColor="white")
+
+    UpdateRelStyle(admin, linter, $textColor="white", $lineColor="red", $offset="20")
+    UpdateRelStyle(ci, linter, $textColor="white", $lineColor="red", $offset="20")
 ```
