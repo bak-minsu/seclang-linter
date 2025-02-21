@@ -11,13 +11,14 @@ C4Context
             System(linter, "seclang-linter", "A linter which finds syntax errors in Coraza's SecLang")
         }
 
+        SystemDb(files, "SecLang Files", "Set of files in the filesystem that contains files written in SecLang")
+
         Rel(admin, linter, "Runs")
         Rel(ci, linter, "Runs")
+        Rel(linter, files, "Reads")
     }
 
-    UpdateElementStyle(enterprise, $fontColor="white", $borderColor="white")
-    UpdateElementStyle(system, $fontColor="white", $borderColor="white")
-
-    UpdateRelStyle(admin, linter, $textColor="white", $lineColor="red", $offset="20")
-    UpdateRelStyle(ci, linter, $textColor="white", $lineColor="red", $offset="20")
+    UpdateRelStyle(admin, linter, $textColor="white", $lineColor="blue", $offset="20")
+    UpdateRelStyle(ci, linter, $textColor="white", $lineColor="blue", $offset="20")
+    UpdateRelStyle(linter, files, $textColor="white", $lineColor="yellow", $offset="20")
 ```
