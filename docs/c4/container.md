@@ -8,17 +8,18 @@ C4Container
 
     Container_Boundary(enterprise, "Enterprise using Coraza WAF") {
         Container(linter, "seclang-linter", "Go, Cobra", "A linter executable which finds syntax errors in files written in SecLang")
-
-        ContainerDb(files, "SecLang Files", "Operating System", "Set of files in the OS filesystem that contains files written in SecLang")
     }
+
+    ContainerDb(files, "Filesystem", "Operating System", "Set of files in the OS filesystem that contains files written in SecLang")
 
     Rel(admin, linter, "Runs")
     Rel(admin, files, "Places files in")
     Rel(ci, linter, "Runs")
     Rel(linter, files, "Reads")
-
-    UpdateRelStyle(admin, linter, $textColor="white", $lineColor="blue", $offset="20")
-    UpdateRelStyle(admin, files, $textColor="white", $lineColor="blue", $offset="20")
-    UpdateRelStyle(ci, linter, $textColor="white", $lineColor="blue", $offset="20")
-    UpdateRelStyle(linter, files, $textColor="white", $lineColor="yellow", $offset="20")
+    
+    UpdateRelStyle(admin, linter, $textColor="white", $lineColor="blue", $offsetY="-10")
+    UpdateRelStyle(admin, files, $textColor="white", $lineColor="blue", $offsetX="-40")
+    UpdateRelStyle(admin, ci, $textColor="white", $lineColor="blue", $offsetX="-20")
+    UpdateRelStyle(ci, linter, $textColor="white", $lineColor="blue")
+    UpdateRelStyle(linter, files, $textColor="white", $lineColor="yellow")
 ```
