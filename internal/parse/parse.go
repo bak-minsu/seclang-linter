@@ -1,11 +1,11 @@
-package ast
+package parse
 
 import (
 	"fmt"
 	"regexp"
 )
 
-// Represents the root of the AST
+// Represents the root of the parse tree
 type Root struct {
 	Directives []*Directive
 }

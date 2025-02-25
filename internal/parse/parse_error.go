@@ -1,4 +1,4 @@
-package ast
+package parse
 
 import (
 	"fmt"
@@ -16,7 +16,10 @@ type ParseError struct {
 	Line int
 
 	// column start number of error
-	Column int
+	ColumnStart int
+
+	// column end number of error
+	ColumnEnd int
 
 	// error message
 	Message string
@@ -42,7 +45,7 @@ func (e *ParseError) Error() string {
 		fmt.Sprintf(
 			"\tline %d, column %d:\n",
 			e.Line,
-			e.Column,
+			e.ColumnStart,
 		),
 	)
 
@@ -55,8 +58,9 @@ func (e *ParseError) Error() string {
 
 	builder.WriteString(
 		fmt.Sprintf(
-			"\t%s^\n",
-			strings.Repeat(" ", e.Column),
+			"\t%s%s\n",
+			strings.Repeat(" ", e.ColumnStart),
+			strings.Repeat("^", e.ColumnEnd-e.ColumnStart),
 		),
 	)
 

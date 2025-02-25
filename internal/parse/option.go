@@ -1,4 +1,4 @@
-package ast
+package parse
 
 import (
 	"fmt"
@@ -33,7 +33,7 @@ type Option struct {
 func optionsContentValid(content string) bool {
 	optionsExpression := `^` + // start of expression
 		`(?:` + // group representing a full option string
-		`(?:\\\n|[ ]+)` + // ignore space or escaped newspace before option
+		`(?:\\\n|\\\r\n|[ ]+)` + // ignore space or escaped newspace before option
 		`(?:` + // start of OR relation
 		`"(?:\\"|[^"])+"` + // captures quotes syntax option
 		`|` + // OR
@@ -42,9 +42,7 @@ func optionsContentValid(content string) bool {
 		`)+` + // end of full option string
 		`$` // end of expression
 
-	compiled := regexp.MustCompile(optionsExpression)
-
-	return compiled.MatchString(content)
+	return regexp.MustCompile(optionsExpression).MatchString(content)
 }
 
 // returns the option tokens as the key and
@@ -54,8 +52,10 @@ func optionValues(line, column int, content string) (map[string]int, error) {
 	if !optionsContentValid(content) {
 		return nil, &ParseError{
 			Line:             line,
-			Column:           column,
+			ColumnStart:      column,
+			ColumnEnd:        len(content),
 			Message:          "invalid characters in option syntax",
+			ParseLevel:       ParseLevelError,
 			DirectiveContent: content,
 		}
 	}
@@ -73,7 +73,9 @@ func optionValues(line, column int, content string) (map[string]int, error) {
 	if len(subMatches) == 0 {
 		return nil, &ParseError{
 			Line:             line,
-			Column:           column,
+			ColumnStart:      column,
+			ColumnEnd:        len(content),
+			ParseLevel:       ParseLevelError,
 			Message:          "no options found for this directive",
 			DirectiveContent: content,
 		}

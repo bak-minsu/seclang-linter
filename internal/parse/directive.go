@@ -1,4 +1,4 @@
-package ast
+package parse
 
 import (
 	"fmt"
@@ -97,9 +97,9 @@ func DirectiveTokens() []string {
 
 // returns the directive token and the column index it was found on.
 // Returns an error if incorrectly formatted
-func directiveToken(content string) (string, int, error) {
+func directiveToken(line int, content string) (string, int, error) {
 	expression := fmt.Sprintf(
-		"(%s)",
+		`^[\s]*(%s) .*$`,
 		strings.Join(DirectiveTokens(), "|"),
 	)
 
@@ -107,7 +107,14 @@ func directiveToken(content string) (string, int, error) {
 
 	indices := compiled.FindStringIndex(content)
 	if indices == nil {
-		return "", -1, &ParseError{}
+		return "", -1, &ParseError{
+			Line:             line,
+			ColumnStart:      0,
+			ColumnEnd:        1,
+			Message:          "could not find any directives",
+			ParseLevel:       ParseLevelError,
+			DirectiveContent: content,
+		}
 	}
 
 	return content[indices[0]:indices[1]], indices[0], nil
@@ -126,13 +133,9 @@ func isEmptyDirective(content string) bool {
 
 // returns true if the content represents a string directive
 func isCommentDirective(content string) bool {
-	trimmed := strings.TrimSpace(content)
+	compiled := regexp.MustCompile(`^\s*#.+$`)
 
-	if len(trimmed) == 0 {
-		panic("this part of the code should be unreachable")
-	}
-
-	return trimmed[0] == '#'
+	return compiled.MatchString(content)
 }
 
 // parses a given directive from string
@@ -155,7 +158,7 @@ func ParseDirective(line int, content string) (*Directive, error) {
 			Options: nil,
 		}, nil
 	default:
-		token, index, err := directiveToken(content)
+		token, index, err := directiveToken(line, content)
 		if err != nil {
 			return nil, fmt.Errorf(
 				"could not get directive token: %w",
@@ -169,7 +172,7 @@ func ParseDirective(line int, content string) (*Directive, error) {
 			line,
 			optionStartColumn,
 			// everything after the token
-			content[optionStartColumn:],
+			content,
 		)
 		if err != nil {
 			return nil, fmt.Errorf(
