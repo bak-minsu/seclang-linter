@@ -50,7 +50,7 @@ func optionsContentValid(content string) bool {
 // within a map
 func optionValues(line, column int, content string) (map[string]int, error) {
 	if !optionsContentValid(content) {
-		return nil, &ParseError{
+		return nil, &LinterError{
 			Line:             line,
 			ColumnStart:      column,
 			ColumnEnd:        len(content),
@@ -71,7 +71,7 @@ func optionValues(line, column int, content string) (map[string]int, error) {
 
 	subMatches := compiled.FindAllStringSubmatchIndex(content, -1)
 	if len(subMatches) == 0 {
-		return nil, &ParseError{
+		return nil, &LinterError{
 			Line:             line,
 			ColumnStart:      column,
 			ColumnEnd:        len(content),

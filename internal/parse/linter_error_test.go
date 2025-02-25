@@ -6,11 +6,11 @@ import (
 )
 
 // constructs a message separated by newline
-func errorMessage(messages ...string) string {
+func joinString(messages ...string) string {
 	return strings.Join(messages, "\n")
 }
 
-func TestParseError_Error(t *testing.T) {
+func TestLinterError_Error(t *testing.T) {
 	type fields struct {
 		Line             int
 		ColumnStart      int
@@ -34,7 +34,7 @@ func TestParseError_Error(t *testing.T) {
 				ParseLevel:       ParseLevelError,
 				DirectiveContent: "SecRule optionA optionB",
 			},
-			want: errorMessage(
+			want: joinString(
 				"",
 				"Parse Error: This column is wrong",
 				"\tline 0, column 0:",
@@ -53,7 +53,7 @@ func TestParseError_Error(t *testing.T) {
 				ParseLevel:       ParseLevelError,
 				DirectiveContent: "    SecRule optionA optionB",
 			},
-			want: errorMessage(
+			want: joinString(
 				"",
 				"Parse Error: This column is wrong",
 				"\tline 0, column 4:",
@@ -72,7 +72,7 @@ func TestParseError_Error(t *testing.T) {
 				ParseLevel:       ParseLevelError,
 				DirectiveContent: "SecRule optionA optionB",
 			},
-			want: errorMessage(
+			want: joinString(
 				"",
 				"Parse Error: This column is wrong",
 				"\tline 0, column 0:",
@@ -91,7 +91,7 @@ func TestParseError_Error(t *testing.T) {
 				ParseLevel:       ParseLevelError,
 				DirectiveContent: "  SecRule optionA optionB",
 			},
-			want: errorMessage(
+			want: joinString(
 				"",
 				"Parse Error: This column is wrong",
 				"\tline 0, column 2:",
@@ -100,10 +100,34 @@ func TestParseError_Error(t *testing.T) {
 				"",
 			),
 		},
+		{
+			name: "POSITIVE - multi line error",
+			fields: fields{
+				Line:        0,
+				ColumnStart: 36,
+				ColumnEnd:   40,
+				Message:     "This column is wrong",
+				ParseLevel:  ParseLevelError,
+				DirectiveContent: joinString(
+					"SecRule optionA \"this option",
+					"    is long\"",
+				),
+			},
+			want: joinString(
+				"",
+				"Parse Error: This column is wrong",
+				"\tline 0, column 36:",
+				"\tSecRule optionA \"this option",
+				"",
+				"\t    is long\"",
+				"\t       ^^^^",
+				"",
+			),
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			e := &ParseError{
+			e := &LinterError{
 				Line:             tt.fields.Line,
 				ColumnStart:      tt.fields.ColumnStart,
 				ColumnEnd:        tt.fields.ColumnEnd,

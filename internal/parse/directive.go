@@ -98,16 +98,28 @@ func DirectiveTokens() []string {
 // returns the directive token and the column index it was found on.
 // Returns an error if incorrectly formatted
 func directiveToken(line int, content string) (string, int, error) {
-	expression := fmt.Sprintf(
-		`^[\s]*(%s) .*$`,
-		strings.Join(DirectiveTokens(), "|"),
-	)
+	compiled := regexp.MustCompile(`^[\s]*(?P<directive>\w+) \S+$`)
 
-	compiled := regexp.MustCompile(expression)
+	directiveIndex := compiled.SubexpIndex("directive")
+	if directiveIndex == -1 {
+		panic("unreachable condition - directive subexp should exist")
+	}
+
+	submatchIndices := compiled.FindAllStringSubmatchIndex(content, -1)
+	if len(submatchIndices) == 0 {
+		return "", 0, &LinterError{
+			Line:             line,
+			ColumnStart:      0,
+			ColumnEnd:        len(content),
+			Message:          "could not find any directives",
+			ParseLevel:       ParseLevelError,
+			DirectiveContent: content,
+		}
+	}
 
 	indices := compiled.FindStringIndex(content)
 	if indices == nil {
-		return "", -1, &ParseError{
+		return "", -1, &LinterError{
 			Line:             line,
 			ColumnStart:      0,
 			ColumnEnd:        1,
