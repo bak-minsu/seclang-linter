@@ -5,15 +5,24 @@ import (
 	"strings"
 )
 
+const (
+	ParseLevelPass = iota
+	ParseLevelWarning
+	ParseLevelError
+)
+
 type ParseError struct {
 	// line number of error
 	Line int
 
-	// column number of error
+	// column start number of error
 	Column int
 
 	// error message
 	Message string
+
+	// indicator for parse error
+	ParseLevel int
 
 	// entire directive
 	DirectiveContent string
@@ -24,14 +33,14 @@ func (e *ParseError) Error() string {
 
 	builder.WriteString(
 		fmt.Sprintf(
-			"Parse Error: %s",
+			"\nParse Error: %s\n",
 			e.Message,
 		),
 	)
 
 	builder.WriteString(
 		fmt.Sprintf(
-			"\tline %d, column %d:",
+			"\tline %d, column %d:\n",
 			e.Line,
 			e.Column,
 		),
@@ -39,14 +48,14 @@ func (e *ParseError) Error() string {
 
 	builder.WriteString(
 		fmt.Sprintf(
-			"\t%s",
+			"\t%s\n",
 			e.DirectiveContent,
 		),
 	)
 
 	builder.WriteString(
 		fmt.Sprintf(
-			"\t%s^",
+			"\t%s^\n",
 			strings.Repeat(" ", e.Column),
 		),
 	)

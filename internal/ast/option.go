@@ -29,16 +29,43 @@ type Option struct {
 	Column int
 }
 
+// returns true if option content is valid
+func optionsContentValid(content string) bool {
+	optionsExpression := `^` + // start of expression
+		`(?:` + // group representing a full option string
+		`(?:\\\n|[ ]+)` + // ignore space or escaped newspace before option
+		`(?:` + // start of OR relation
+		`"(?:\\"|[^"])+"` + // captures quotes syntax option
+		`|` + // OR
+		`[^\s]+` + // captures a non-quote syntax option
+		`)` + // end of OR relation
+		`)+` + // end of full option string
+		`$` // end of expression
+
+	compiled := regexp.MustCompile(optionsExpression)
+
+	return compiled.MatchString(content)
+}
+
 // returns the option tokens as the key and
 // the column indices they were found on as the value
 // within a map
 func optionValues(line, column int, content string) (map[string]int, error) {
-	optionsExpression := `(?:\\\n|\s)+` + // ignore space or escaped newspace before option
+	if !optionsContentValid(content) {
+		return nil, &ParseError{
+			Line:             line,
+			Column:           column,
+			Message:          "invalid characters in option syntax",
+			DirectiveContent: content,
+		}
+	}
+
+	optionsExpression := `(?:\\\n|[ ]+)` + // ignore space or escaped newspace before option
 		`(?P<options>` + // start of 'options' capture group
 		`"(?:\\"|[^"])+"` + // captures quotes syntax option
 		`|` + // OR
-		`[^ \n]+` + // captures a non-quote syntax option
-		`)` // end of 'options' capture gorup
+		`[^\s]+` + // captures a non-quote syntax option
+		`)` // end of 'options' capture group
 
 	compiled := regexp.MustCompile(optionsExpression)
 
@@ -54,10 +81,10 @@ func optionValues(line, column int, content string) (map[string]int, error) {
 
 	subMatchIndex := compiled.SubexpIndex("options")
 	if subMatchIndex == -1 {
-		panic("unreachable condition - options subindex was not found")
+		panic("unreachable condition - options sub-index was not found")
 	}
 
-	subMatchIndex *= 2
+	subMatchIndex *= 2 // multiply since there are two indices per sub match
 
 	options := make(map[string]int, len(subMatches))
 
