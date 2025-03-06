@@ -2,24 +2,21 @@ package parse
 
 import (
 	"fmt"
+	"regexp"
 	"strings"
 )
 
 const (
-	ParseLevelPass = iota
-	ParseLevelWarning
+	ParseLevelWarning = iota
 	ParseLevelError
 )
 
 type LinterError struct {
-	// line number of error
-	Line int
+	// start index of error
+	OffsetStart int
 
-	// column start number of error
-	ColumnStart int
-
-	// column end number of error
-	ColumnEnd int
+	// distance to the end of the error
+	Distance int
 
 	// error message
 	Message string
@@ -27,63 +24,90 @@ type LinterError struct {
 	// indicator for parse error
 	ParseLevel int
 
-	// entire directive
-	DirectiveContent string
+	// entire content
+	Content string
+}
+
+// returns offset end, exclusive
+func (e *LinterError) OffsetEnd() int {
+	return e.OffsetStart + e.Distance
 }
 
 func (e *LinterError) Error() string {
 	var builder strings.Builder
 
-	builder.WriteString(
-		fmt.Sprintf(
-			"\nParse Error: %s\n",
-			e.Message,
-		),
-	)
+	// start on a new line
+	builder.WriteRune('\n')
 
-	builder.WriteString(
-		fmt.Sprintf(
-			"\tline %d, column %d:\n",
-			e.Line,
-			e.ColumnStart,
-		),
-	)
+	switch e.ParseLevel {
+	case ParseLevelError:
+		builder.WriteString("Error: ")
+	case ParseLevelWarning:
+		builder.WriteString("Warning: ")
+	}
 
-	lineStart := 0
-	columnStart := e.ColumnStart
-	columnEnd := e.ColumnEnd
-	for _, line := range strings.Split(e.DirectiveContent, "\n") {
-		// add one for missing new-line after split
-		lineEnd := lineStart + len(line)
+	builder.WriteString(e.Message)
+	builder.WriteRune('\n')
 
-		builder.WriteString(
-			fmt.Sprintf("\t%s\n", line),
-		)
+	contentLines := strings.Split(e.Content, "\n")
 
-		switch {
-		case columnStart < lineStart || columnStart > lineEnd:
-			builder.WriteRune('\n')
-		case columnEnd > lineEnd:
-			builder.WriteString(
-				fmt.Sprintf(
-					"\t%s%s\n",
-					strings.Repeat(" ", columnStart-lineStart),
-					strings.Repeat("^", lineEnd-columnStart),
-				),
-			)
+	nonWhiteSpace := regexp.MustCompile(`\S`)
 
-			columnStart = lineEnd + 1
-		default:
-			builder.WriteString(
-				fmt.Sprintf(
-					"\t%s%s\n",
-					strings.Repeat(" ", columnStart-lineStart),
-					strings.Repeat("^", columnEnd-columnStart),
-				),
-			)
+	lineStartOffset := 0
+	offsetStart := e.OffsetStart
+	for lineNumber, subContent := range contentLines {
+		// +1 to account for newline character
+		lineEndOffset := lineStartOffset + len(subContent)
+
+		if lineEndOffset < e.OffsetStart {
+			continue
 		}
 
-		lineStart = lineEnd + 1 // +1 for missing newline
+		lineIndicator := fmt.Sprintf(
+			"line %d:",
+			lineNumber,
+		)
+
+		builder.WriteString(
+			fmt.Sprintf(
+				"%s %s\n",
+				lineIndicator,
+				subContent,
+			),
+		)
+
+		spaceContent := nonWhiteSpace.ReplaceAllString(subContent, " ")
+		carrotContent := nonWhiteSpace.ReplaceAllString(subContent, "^")
+
+		localStartOffset := offsetStart - lineStartOffset
+
+		if e.OffsetEnd() <= lineEndOffset {
+			underline := spaceContent[:localStartOffset] +
+				carrotContent[localStartOffset:e.OffsetEnd()-lineStartOffset]
+
+			builder.WriteString(
+				fmt.Sprintf(
+					"%s %s\n",
+					strings.Repeat(" ", len(lineIndicator)),
+					underline,
+				),
+			)
+
+			break
+		}
+
+		underline := spaceContent[:localStartOffset] + carrotContent[localStartOffset:]
+
+		builder.WriteString(
+			fmt.Sprintf(
+				"%s %s\n",
+				strings.Repeat(" ", len(lineIndicator)),
+				underline,
+			),
+		)
+
+		offsetStart = lineEndOffset + 1
+		lineStartOffset = lineEndOffset + 1
 	}
 
 	return builder.String()
