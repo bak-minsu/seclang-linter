@@ -19,124 +19,160 @@ type Option struct {
 	//     "with multi-line \
 	//
 	//     quotes"
-	Value string
+	Lexeme string
 
-	// line number for option
-	Line int
-
-	// column index for the first character
-	// of the option
-	Column int
+	// offset number for option
+	Offset int
 }
 
-// returns true if option content is valid
-func optionsContentValid(content string) bool {
-	optionsExpression := `^` + // start of expression
-		`(?:` + // group representing a full option string
-		`(?:\\\n|\\\r\n|[ ]+)` + // ignore space or escaped newspace before option
-		`(?:` + // start of OR relation
-		`"(?:\\"|[^"])+"` + // captures quotes syntax option
-		`|` + // OR
-		`[^\s]+` + // captures a non-quote syntax option
-		`)` + // end of OR relation
-		`)+` + // end of full option string
-		`$` // end of expression
-
-	return regexp.MustCompile(optionsExpression).MatchString(content)
+func (o *Option) Len() int {
+	return len(o.Lexeme)
 }
 
-// returns the option tokens as the key and
-// the column indices they were found on as the value
-// within a map
-func optionValues(line, column int, content string) (map[string]int, error) {
-	if !optionsContentValid(content) {
+// parses non quoted option content into option object
+func ParseOptionNotQuoted(contents []byte, offset int) (*Option, error) {
+	if offset >= len(contents) {
 		return nil, &LinterError{
-			Line:             line,
-			ColumnStart:      column,
-			ColumnEnd:        len(content),
-			Message:          "invalid characters in option syntax",
-			ParseLevel:       ParseLevelError,
-			DirectiveContent: content,
+			Message:    "EOF - expected unquoted option content",
+			ParseLevel: ParseLevelError,
+			Offset:     offset,
+			Distance:   1,
+			Contents:   string(contents),
 		}
 	}
 
-	optionsExpression := `(?:\\\n|[ ]+)` + // ignore space or escaped newspace before option
-		`(?P<options>` + // start of 'options' capture group
-		`"(?:\\"|[^"])+"` + // captures quotes syntax option
-		`|` + // OR
-		`[^\s]+` + // captures a non-quote syntax option
-		`)` // end of 'options' capture group
+	offsetContent := contents[offset:]
 
-	compiled := regexp.MustCompile(optionsExpression)
+	patternNotWhitespace := regexp.MustCompile(`^\S+`)
 
-	subMatches := compiled.FindAllStringSubmatchIndex(content, -1)
-	if len(subMatches) == 0 {
+	if matchedIndices := patternNotWhitespace.FindIndex(offsetContent); matchedIndices != nil {
+		match := offsetContent[matchedIndices[0]:matchedIndices[1]]
+
+		return &Option{
+			Lexeme: string(match),
+			Offset: offset + matchedIndices[0],
+		}, nil
+	}
+
+	return nil, &LinterError{
+		Message:    "found unexpected whitepsace while scanning unquoted option syntax",
+		ParseLevel: ParseLevelError,
+		Offset:     offset,
+		Distance:   1,
+		Contents:   string(contents),
+	}
+}
+
+// parses non quoted option content into option object
+func ParseOptionQuoted(contents []byte, offset int) (*Option, error) {
+	if offset >= len(contents) {
 		return nil, &LinterError{
-			Line:             line,
-			ColumnStart:      column,
-			ColumnEnd:        len(content),
-			ParseLevel:       ParseLevelError,
-			Message:          "no options found for this directive",
-			DirectiveContent: content,
+			Message:    "EOF - expected quoted option content",
+			ParseLevel: ParseLevelError,
+			Offset:     offset,
+			Distance:   1,
+			Contents:   string(contents),
 		}
 	}
 
-	subMatchIndex := compiled.SubexpIndex("options")
-	if subMatchIndex == -1 {
-		panic("unreachable condition - options sub-index was not found")
+	offsetContent := contents[offset:]
+
+	patternUntilQuote := regexp.MustCompile(`^"(\\"|[^"])+"`)
+
+	matchedIndices := patternUntilQuote.FindIndex(offsetContent)
+	if matchedIndices != nil {
+		match := offsetContent[matchedIndices[0]:matchedIndices[1]]
+
+		return &Option{
+			Lexeme: string(match),
+			Offset: offset + matchedIndices[0],
+		}, nil
 	}
 
-	subMatchIndex *= 2 // multiply since there are two indices per sub match
-
-	options := make(map[string]int, len(subMatches))
-
-	for _, subMatch := range subMatches {
-		left, right := subMatch[subMatchIndex], subMatch[subMatchIndex+1]
-
-		match := content[left:right]
-
-		options[match] = left
-	}
-
-	return options, nil
-}
-
-// parses option content into option.
-// Examples:
-//
-//   - "quoted option"
-//
-//   - unquotedOption
-//
-//   - multi-line options \
-//
-//     "with multi-line \
-//
-//     quotes"
-func ParseOption(line, column int, optionContent string) *Option {
-	return &Option{
-		Value:  optionContent,
-		Line:   line,
-		Column: column,
+	return nil, &LinterError{
+		Message:    "unexpected sequence while scanning quoted option syntax",
+		ParseLevel: ParseLevelError,
+		Offset:     offset,
+		Distance:   1,
+		Contents:   string(contents),
 	}
 }
 
 // parses content representing multiple options
 // declared after a directive
-func ParseOptions(line, startColumn int, content string) ([]*Option, error) {
-	values, err := optionValues(line, startColumn, content)
+func ParseOptions(contents []byte, offset int) ([]*Option, error) {
+	options, err := parseOptions(
+		contents,
+		offset,
+		nil,
+	)
 	if err != nil {
-		return nil, fmt.Errorf("could not parse options: %w", err)
-	}
-
-	options := make([]*Option, 0, len(values))
-	for value, optionColumn := range values {
-		options = append(options, ParseOption(
-			line,
-			optionColumn+startColumn,
-			value,
-		))
+		return nil, fmt.Errorf(
+			"trouble parsing options: %w",
+			err,
+		)
 	}
 
 	return options, nil
+}
+
+func parseOptions(contents []byte, offset int, options []*Option) ([]*Option, error) {
+	if offset >= len(contents) {
+		return options, nil
+	}
+
+	var (
+		patternNewline   = regexp.MustCompile(`^\n`)
+		patternSkip      = regexp.MustCompile(`^(\\\n| )`)
+		patternNotQuoted = regexp.MustCompile(`^[^"]`)
+		patternQuoted    = regexp.MustCompile(`^"`)
+	)
+
+	offsetContent := contents[offset:]
+
+	if matchIndex := patternSkip.FindIndex(offsetContent); matchIndex != nil {
+		return parseOptions(
+			contents,
+			offset+int(matchIndex[1]),
+			options,
+		)
+	}
+
+	if matchIndex := patternNewline.FindIndex(offsetContent); matchIndex != nil {
+		return options, nil
+	}
+
+	if matchIndex := patternNotQuoted.FindIndex(offsetContent); matchIndex != nil {
+		option, err := ParseOptionNotQuoted(contents, offset)
+		if err != nil {
+			return nil, fmt.Errorf("could not parse option: %w", err)
+		}
+
+		return parseOptions(
+			contents,
+			offset+option.Len(),
+			append(options, option),
+		)
+	}
+
+	if matchIndex := patternQuoted.FindIndex(offsetContent); matchIndex != nil {
+		option, err := ParseOptionQuoted(contents, offset)
+		if err != nil {
+			return nil, fmt.Errorf("could not parse option: %w", err)
+		}
+
+		return parseOptions(
+			contents,
+			offset+option.Len(),
+			append(options, option),
+		)
+	}
+
+	return nil, &LinterError{
+		Message:    "unexpected token",
+		Offset:     offset,
+		Distance:   1,
+		ParseLevel: ParseLevelError,
+		Contents:   string(contents),
+	}
 }

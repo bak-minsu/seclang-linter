@@ -1,93 +1,233 @@
 package parse
 
 import (
-	"reflect"
 	"testing"
+
+	"github.com/go-test/deep"
 )
 
-func Test_optionValues(t *testing.T) {
+func TestParseOptions(t *testing.T) {
 	type args struct {
-		line    int
-		column  int
-		content string
+		contents []byte
+		offset   int
 	}
 	tests := []struct {
 		name    string
 		args    args
-		want    map[string]int
+		want    []*Option
 		wantErr bool
 	}{
 		{
-			name: "NEGATIVE - single line with no spaces and no quotes",
+			name: "POSITIVE - Parse single unquoted option",
 			args: args{
-				line:    0,
-				column:  0,
-				content: "testOption",
+				contents: []byte(
+					"optionA",
+				),
 			},
-			wantErr: true,
-		},
-		{
-			name: "POSITIVE - single line starting with one space with no quotes",
-			args: args{
-				line:    0,
-				column:  0,
-				content: " testOption",
-			},
-			want: map[string]int{
-				"testOption": 1,
+			want: []*Option{
+				{
+					Lexeme: "optionA",
+					Offset: 0,
+				},
 			},
 		},
 		{
-			name: "POSITIVE - single line starting with several spaces with no quotes",
+			name: "POSITIVE - Parse single quoted option",
 			args: args{
-				line:    0,
-				column:  0,
-				content: "    testOption",
+				contents: []byte(
+					`"option A"`,
+				),
 			},
-			want: map[string]int{
-				"testOption": 4,
+			want: []*Option{
+				{
+					Lexeme: `"option A"`,
+					Offset: 0,
+				},
 			},
 		},
 		{
-			name: "NEGATIVE - multiple options in a single line starting with no space with no quotes",
+			name: "POSITIVE - Parse single quoted option with escaped quote",
 			args: args{
-				line:    0,
-				column:  0,
-				content: "optionA optionB",
+				contents: []byte(
+					`"\"option A\""`,
+				),
 			},
-			wantErr: true,
-		},
-		{
-			name: "POSITIVE - multiple options in a single line starting with a single space with no quotes",
-			args: args{
-				line:    0,
-				column:  0,
-				content: " optionA optionB",
-			},
-			want: map[string]int{
-				"optionA": 1,
-				"optionB": 9,
+			want: []*Option{
+				{
+					Lexeme: `"\"option A\""`,
+					Offset: 0,
+				},
 			},
 		},
 		{
-			name: "NEGATIVE - single line starting with a tab with no quotes",
+			name: "POSITIVE - Parse single unquoted option with offset",
 			args: args{
-				line:    0,
-				column:  0,
-				content: "\ttestOption",
+				contents: []byte(
+					"Directive optionA",
+				),
+				offset: 9,
 			},
-			wantErr: true,
+			want: []*Option{
+				{
+					Lexeme: "optionA",
+					Offset: 10,
+				},
+			},
+		},
+		{
+			name: "POSITIVE - Parse single quoted option with offset",
+			args: args{
+				contents: []byte(
+					`Directive "option A"`,
+				),
+				offset: 9,
+			},
+			want: []*Option{
+				{
+					Lexeme: `"option A"`,
+					Offset: 10,
+				},
+			},
+		},
+		{
+			name: "POSITIVE - Parse two unquoted options with offset",
+			args: args{
+				contents: []byte(
+					"Directive optionA optionB",
+				),
+				offset: 9,
+			},
+			want: []*Option{
+				{
+					Lexeme: "optionA",
+					Offset: 10,
+				},
+				{
+					Lexeme: "optionB",
+					Offset: 18,
+				},
+			},
+		},
+		{
+			name: "POSITIVE - Parse two quoted options",
+			args: args{
+				contents: []byte(
+					`"option A" "option B"`,
+				),
+				offset: 0,
+			},
+			want: []*Option{
+				{
+					Lexeme: `"option A"`,
+					Offset: 0,
+				},
+				{
+					Lexeme: `"option B"`,
+					Offset: 11,
+				},
+			},
+		},
+		{
+			name: "POSITIVE - Parse two quoted options with escaped quotes",
+			args: args{
+				contents: []byte(
+					`"option \"A\"" "option \"B\""`,
+				),
+				offset: 0,
+			},
+			want: []*Option{
+				{
+					Lexeme: `"option \"A\""`,
+					Offset: 0,
+				},
+				{
+					Lexeme: `"option \"B\""`,
+					Offset: 15,
+				},
+			},
+		},
+		{
+			name: "POSITIVE - Parse two unquoted options with escaped newline",
+			args: args{
+				contents: []byte(
+					"optionA \\\n" +
+						"optionB",
+				),
+				offset: 0,
+			},
+			want: []*Option{
+				{
+					Lexeme: "optionA",
+					Offset: 0,
+				},
+				{
+					Lexeme: "optionB",
+					Offset: 10,
+				},
+			},
+		},
+		{
+			name: "POSITIVE - Parse two quoted options with escaped newline",
+			args: args{
+				contents: []byte(
+					"\"option \\\"A\\\"\"\\\n" +
+						"\"option \\\"B\\\"\"",
+				),
+				offset: 0,
+			},
+			want: []*Option{
+				{
+					Lexeme: "\"option \\\"A\\\"\"",
+					Offset: 0,
+				},
+				{
+					Lexeme: "\"option \\\"B\\\"\"",
+					Offset: 16,
+				},
+			},
+		},
+		{
+			name: "POSITIVE - Parse an unquoted option with nonescaped newline",
+			args: args{
+				contents: []byte(
+					"optionA\n" +
+						"Directive optionB",
+				),
+				offset: 0,
+			},
+			want: []*Option{
+				{
+					Lexeme: "optionA",
+					Offset: 0,
+				},
+			},
+		},
+		{
+			name: "POSITIVE - Parse two quoted options with nonescaped newline",
+			args: args{
+				contents: []byte(
+					"\"option \\\"A\\\"\"\n" +
+						"Directive \"option \\\"B\\\"\"",
+				),
+				offset: 0,
+			},
+			want: []*Option{
+				{
+					Lexeme: "\"option \\\"A\\\"\"",
+					Offset: 0,
+				},
+			},
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := optionValues(tt.args.line, tt.args.column, tt.args.content)
+			got, err := ParseOptions(tt.args.contents, tt.args.offset)
 			if (err != nil) != tt.wantErr {
-				t.Errorf("optionValues() error = %v, wantErr %v", err, tt.wantErr)
+				t.Errorf("ParseOptions() error = %v, wantErr %v", err, tt.wantErr)
 				return
 			}
-			if !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("optionValues() = %v, want %v", got, tt.want)
+			if diff := deep.Equal(got, tt.want); diff != nil {
+				t.Error(diff)
 			}
 		})
 	}
