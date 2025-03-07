@@ -12,7 +12,7 @@ Given paths can be any of the following:
 `
 
 var runCmd = &cobra.Command{
-	Use:   "run [OPTIONS] <path to seclang file> <additional paths to seclang files...>",
+	Use:   "run [OPTIONS] <path to seclang file> <additional paths to seclang files>...",
 	Short: "Runs linter on given paths",
 	Long:  runDescription,
 	RunE: func(cmd *cobra.Command, args []string) error {
