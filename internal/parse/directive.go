@@ -39,27 +39,6 @@ const (
 	DirectiveSecRuleUpdateTargetByTag    = "SecRuleUpdateTargetByTag"
 )
 
-// represents the SecLang directive
-type Directive struct {
-	// string representing the directive.
-	// ex. "Include"
-	Lexeme string
-
-	// offset within the entire file
-	Offset int
-
-	// options for the directive
-	Options []*Option
-}
-
-func (d *Directive) Len() int {
-	lastOption := d.Options[len(d.Options)-1]
-
-	directiveEnd := lastOption.Offset + lastOption.Len()
-
-	return directiveEnd - d.Offset
-}
-
 // returns all possible directive lexemes as a string slice.
 func DirectiveLexemes() []string {
 	return []string{
@@ -93,6 +72,27 @@ func DirectiveLexemes() []string {
 		DirectiveSecRuleUpdateTargetByID,
 		DirectiveSecRuleUpdateTargetByTag,
 	}
+}
+
+// represents the SecLang directive
+type Directive struct {
+	// string representing the directive.
+	// ex. "Include"
+	Lexeme string
+
+	// offset within the entire file
+	Offset int
+
+	// options for the directive
+	Options []*Option
+}
+
+func (d *Directive) Len() int {
+	lastOption := d.Options[len(d.Options)-1]
+
+	directiveEnd := lastOption.Offset + lastOption.Len()
+
+	return directiveEnd - d.Offset
 }
 
 // parses a given directive from string
