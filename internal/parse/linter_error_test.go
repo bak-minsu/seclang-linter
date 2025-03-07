@@ -12,11 +12,11 @@ func joinString(messages ...string) string {
 
 func TestLinterError_Error(t *testing.T) {
 	type fields struct {
-		OffsetStart int
-		Distance    int
-		Message     string
-		ParseLevel  int
-		Content     string
+		Offset     int
+		Distance   int
+		Message    string
+		ParseLevel int
+		Content    string
 	}
 	tests := []struct {
 		name   string
@@ -26,11 +26,11 @@ func TestLinterError_Error(t *testing.T) {
 		{
 			name: "POSITIVE - single column error at the start",
 			fields: fields{
-				OffsetStart: 0,
-				Distance:    1,
-				Message:     "This column is wrong",
-				ParseLevel:  ParseLevelError,
-				Content:     "SecRule optionA optionB",
+				Offset:     0,
+				Distance:   1,
+				Message:    "This column is wrong",
+				ParseLevel: ParseLevelError,
+				Content:    "SecRule optionA optionB",
 			},
 			want: joinString(
 				"",
@@ -43,11 +43,11 @@ func TestLinterError_Error(t *testing.T) {
 		{
 			name: "POSITIVE - single column error with tab start",
 			fields: fields{
-				OffsetStart: 1,
-				Distance:    1,
-				Message:     "This column is wrong",
-				ParseLevel:  ParseLevelError,
-				Content:     "\tSecRule optionA optionB",
+				Offset:     1,
+				Distance:   1,
+				Message:    "This column is wrong",
+				ParseLevel: ParseLevelError,
+				Content:    "\tSecRule optionA optionB",
 			},
 			want: joinString(
 				"",
@@ -60,11 +60,11 @@ func TestLinterError_Error(t *testing.T) {
 		{
 			name: "POSITIVE - single column error with whitespace start",
 			fields: fields{
-				OffsetStart: 4,
-				Distance:    1,
-				Message:     "This column is wrong",
-				ParseLevel:  ParseLevelError,
-				Content:     "    SecRule optionA optionB",
+				Offset:     4,
+				Distance:   1,
+				Message:    "This column is wrong",
+				ParseLevel: ParseLevelError,
+				Content:    "    SecRule optionA optionB",
 			},
 			want: joinString(
 				"",
@@ -77,11 +77,11 @@ func TestLinterError_Error(t *testing.T) {
 		{
 			name: "POSITIVE - multi column error at the start",
 			fields: fields{
-				OffsetStart: 0,
-				Distance:    7,
-				Message:     "This column is wrong",
-				ParseLevel:  ParseLevelError,
-				Content:     "SecRule optionA optionB",
+				Offset:     0,
+				Distance:   7,
+				Message:    "This column is wrong",
+				ParseLevel: ParseLevelError,
+				Content:    "SecRule optionA optionB",
 			},
 			want: joinString(
 				"",
@@ -94,11 +94,11 @@ func TestLinterError_Error(t *testing.T) {
 		{
 			name: "POSITIVE - multi column error with whitespace at the start",
 			fields: fields{
-				OffsetStart: 2,
-				Distance:    7,
-				Message:     "This column is wrong",
-				ParseLevel:  ParseLevelError,
-				Content:     "  SecRule optionA optionB",
+				Offset:     2,
+				Distance:   7,
+				Message:    "This column is wrong",
+				ParseLevel: ParseLevelError,
+				Content:    "  SecRule optionA optionB",
 			},
 			want: joinString(
 				"",
@@ -111,10 +111,10 @@ func TestLinterError_Error(t *testing.T) {
 		{
 			name: "POSITIVE - multi line error",
 			fields: fields{
-				OffsetStart: 16,
-				Distance:    25,
-				Message:     "This column is wrong",
-				ParseLevel:  ParseLevelError,
+				Offset:     16,
+				Distance:   25,
+				Message:    "This column is wrong",
+				ParseLevel: ParseLevelError,
 				Content: joinString(
 					"SecRule optionA \"this option",
 					"    is long\"",
@@ -134,11 +134,11 @@ func TestLinterError_Error(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			e := &LinterError{
-				OffsetStart: tt.fields.OffsetStart,
-				Distance:    tt.fields.Distance,
-				Message:     tt.fields.Message,
-				ParseLevel:  tt.fields.ParseLevel,
-				Content:     tt.fields.Content,
+				Offset:     tt.fields.Offset,
+				Distance:   tt.fields.Distance,
+				Message:    tt.fields.Message,
+				ParseLevel: tt.fields.ParseLevel,
+				Contents:   tt.fields.Content,
 			}
 			if got := e.Error(); got != tt.want {
 				t.Errorf("ParseError.Error() = %v, want %v", got, tt.want)

@@ -12,25 +12,25 @@ const (
 )
 
 type LinterError struct {
-	// start index of error
-	OffsetStart int
-
-	// distance to the end of the error
-	Distance int
-
 	// error message
 	Message string
 
 	// indicator for parse error
 	ParseLevel int
 
+	// start index of error
+	Offset int
+
+	// distance to the end of the error
+	Distance int
+
 	// entire content
-	Content string
+	Contents string
 }
 
 // returns offset end, exclusive
 func (e *LinterError) OffsetEnd() int {
-	return e.OffsetStart + e.Distance
+	return e.Offset + e.Distance
 }
 
 func (e *LinterError) Error() string {
@@ -49,17 +49,17 @@ func (e *LinterError) Error() string {
 	builder.WriteString(e.Message)
 	builder.WriteRune('\n')
 
-	contentLines := strings.Split(e.Content, "\n")
+	contentLines := strings.Split(e.Contents, "\n")
 
 	nonWhiteSpace := regexp.MustCompile(`\S`)
 
 	lineStartOffset := 0
-	offsetStart := e.OffsetStart
+	offsetStart := e.Offset
 	for lineNumber, subContent := range contentLines {
 		// +1 to account for newline character
 		lineEndOffset := lineStartOffset + len(subContent)
 
-		if lineEndOffset < e.OffsetStart {
+		if lineEndOffset < e.Offset {
 			continue
 		}
 
