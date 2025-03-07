@@ -6,10 +6,8 @@ import (
 	"strings"
 )
 
-// all possible directives
+// all possible directive lexems
 const (
-	DirectiveEmpty                       = ""
-	DirectiveComment                     = "#"
 	DirectiveInclude                     = "Include"
 	DirectiveSecAction                   = "SecAction"
 	DirectiveSecArgumentsLimit           = "SecArgumentsLimit"
@@ -43,25 +41,27 @@ const (
 
 // represents the SecLang directive
 type Directive struct {
-	// Token representing the directive.
+	// string representing the directive.
 	// ex. "Include"
-	Token string
+	Lexeme string
 
-	// Entire directive content
-	Content string
+	// offset within the entire file
+	Offset int
 
-	// Line number for directive
-	Line int
-	// Column index for the first character
-	// of directive token
-	Column int
-
-	// Options for the directive
+	// options for the directive
 	Options []*Option
 }
 
-// returns all possible directive tokens as a string slice.
-func DirectiveTokens() []string {
+func (d *Directive) Len() int {
+	lastOption := d.Options[len(d.Options)-1]
+
+	directiveEnd := lastOption.Offset + lastOption.Len()
+
+	return directiveEnd - d.Offset
+}
+
+// returns all possible directive lexemes as a string slice.
+func DirectiveLexemes() []string {
 	return []string{
 		DirectiveInclude,
 		DirectiveSecAction,
@@ -95,120 +95,105 @@ func DirectiveTokens() []string {
 	}
 }
 
-// returns the directive token and the column index it was found on.
-// Returns an error if incorrectly formatted
-func directiveToken(line int, content string) (string, int, error) {
-	compiled := regexp.MustCompile(`^[\s]*(?P<directive>\w+) \S+$`)
-
-	directiveIndex := compiled.SubexpIndex("directive")
-	if directiveIndex == -1 {
-		panic("unreachable condition - directive subexp should exist")
-	}
-
-	submatchIndices := compiled.FindAllStringSubmatchIndex(content, -1)
-	if len(submatchIndices) == 0 {
-		return "", 0, &LinterError{
-			Line:             line,
-			ColumnStart:      0,
-			ColumnEnd:        len(content),
-			Message:          "could not find any directives",
-			ParseLevel:       ParseLevelError,
-			DirectiveContent: content,
-		}
-	}
-
-	indices := compiled.FindStringIndex(content)
-	if indices == nil {
-		return "", -1, &LinterError{
-			Line:             line,
-			ColumnStart:      0,
-			ColumnEnd:        1,
-			Message:          "could not find any directives",
-			ParseLevel:       ParseLevelError,
-			DirectiveContent: content,
-		}
-	}
-
-	return content[indices[0]:indices[1]], indices[0], nil
-}
-
-// returns true if the content represents an empty directive
-func isEmptyDirective(content string) bool {
-	if len(content) == 0 {
-		return true
-	}
-
-	compiled := regexp.MustCompile(`^\s+$`)
-
-	return compiled.MatchString(content)
-}
-
-// returns true if the content represents a string directive
-func isCommentDirective(content string) bool {
-	compiled := regexp.MustCompile(`^\s*#.+$`)
-
-	return compiled.MatchString(content)
-}
-
 // parses a given directive from string
-func ParseDirective(line int, content string) (*Directive, error) {
-	switch {
-	case isEmptyDirective(content):
-		return &Directive{
-			Token:   DirectiveEmpty,
-			Content: content,
-			Line:    line,
-			Column:  0,
-			Options: nil,
-		}, nil
-	case isCommentDirective(content):
-		return &Directive{
-			Token:   DirectiveComment,
-			Content: content,
-			Line:    line,
-			Column:  strings.IndexRune(content, '#'),
-			Options: nil,
-		}, nil
-	default:
-		token, index, err := directiveToken(line, content)
+func ParseDirective(contents []byte, offset int) (*Directive, error) {
+	patternDirective := regexp.MustCompile(`^[[:alpha:]]+`)
+
+	matchIndex := patternDirective.FindIndex(contents[offset:])
+	if matchIndex != nil {
+		options, err := ParseOptions(contents, offset+matchIndex[1])
 		if err != nil {
 			return nil, fmt.Errorf(
-				"could not get directive token: %w",
+				"could not parse options: %w",
 				err,
 			)
 		}
 
-		optionStartColumn := index + len(token)
+		offsetContent := contents[offset:]
 
-		options, err := ParseOptions(
-			line,
-			optionStartColumn,
-			// everything after the token
-			content,
-		)
-		if err != nil {
-			return nil, fmt.Errorf(
-				"could not get options: %w",
-				err,
-			)
-		}
+		lexeme := offsetContent[matchIndex[0]:matchIndex[1]]
 
 		return &Directive{
-			Token:   token,
-			Content: content,
-			Line:    line,
-			Column:  index,
+			Lexeme:  string(lexeme),
+			Offset:  offset,
 			Options: options,
 		}, nil
+	}
+
+	return nil, &LinterError{
+		Offset:     offset,
+		Distance:   1,
+		Message:    "expected alphabetic characters for directive",
+		ParseLevel: ParseLevelError,
+		Contents:   string(contents),
 	}
 }
 
 // parses a given directive from byte array
-func ParseDirectives(contents []string) ([]*Directive, error) {
-	directives := make([]*Directive, len(contents))
+func ParseDirectives(contents []byte) ([]*Directive, error) {
+	if len(contents) == 0 {
+		return nil, nil
+	}
 
-	for i, content := range contents {
-		directive, err := ParseDirective(i, content)
+	// use the number of lines as a guess to how big
+	// the directives capacity should be
+	lines := strings.Count(string(contents), "\n") + 1
+
+	directives, err := parseDirectives(
+		contents,
+		0,
+		make([]*Directive, 0, lines),
+	)
+	if err != nil {
+		return nil, fmt.Errorf(
+			"problems while traversing directive listing: %w",
+			err,
+		)
+	}
+
+	if len(directives) == 0 {
+		return nil, nil
+	}
+
+	return directives, nil
+}
+
+// recursive helper to ParseDirectives.
+// Content represents the entire read content,
+// offset represents the character index within read content,
+// and directives is the array of directives that will be output
+// once read is complete.
+func parseDirectives(content []byte, offset int, directives []*Directive) ([]*Directive, error) {
+	if offset >= len(content) {
+		return directives, nil
+	}
+
+	var (
+		patternWhitespace = regexp.MustCompile(`^\s+`)
+		patternComment    = regexp.MustCompile(`^#[^\r\n]+`)
+		patternDirective  = regexp.MustCompile(`^[[:alpha:]]+`)
+	)
+
+	offsetContents := content[offset:]
+
+	if matchIndices := patternWhitespace.FindIndex(offsetContents); matchIndices != nil {
+		return parseDirectives(
+			content,
+			offset+matchIndices[1],
+			directives,
+		)
+	}
+
+	if matchIndices := patternComment.FindIndex(offsetContents); matchIndices != nil {
+		return parseDirectives(
+			content,
+			offset+matchIndices[1],
+			directives,
+		)
+	}
+
+	if patternDirective.Match(offsetContents) {
+		directive, err := ParseDirective(content, offset)
 		if err != nil {
 			return nil, fmt.Errorf(
 				"could not parse directive: %w",
@@ -216,8 +201,18 @@ func ParseDirectives(contents []string) ([]*Directive, error) {
 			)
 		}
 
-		directives = append(directives, directive)
+		return parseDirectives(
+			content,
+			offset+directive.Len(),
+			append(directives, directive),
+		)
 	}
 
-	return directives, nil
+	return nil, &LinterError{
+		Offset:     offset,
+		Distance:   1,
+		Message:    "unexpected token",
+		ParseLevel: ParseLevelError,
+		Contents:   string(content),
+	}
 }
