@@ -2,20 +2,10 @@ package parse
 
 import (
 	"fmt"
-	"regexp"
 )
 
-// Represents the root of the parse tree
-type Root struct {
-	Directives []*Directive
-}
-
-func Parse(content []byte) (*Root, error) {
-	splitter := regexp.MustCompile(`[^\\](\n|\r\n)`)
-
-	split := splitter.Split(string(content), -1)
-
-	directives, err := ParseDirectives(split)
+func Parse(content []byte) (*File, error) {
+	directives, err := ParseDirectives(content)
 	if err != nil {
 		return nil, fmt.Errorf(
 			"could not parse directives: %w",
@@ -23,7 +13,7 @@ func Parse(content []byte) (*Root, error) {
 		)
 	}
 
-	return &Root{
+	return &File{
 		Directives: directives,
 	}, nil
 }
