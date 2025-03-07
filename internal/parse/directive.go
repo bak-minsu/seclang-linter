@@ -211,7 +211,7 @@ func parseDirectives(content []byte, offset int, directives []*Directive) ([]*Di
 	return nil, &LinterError{
 		Offset:     offset,
 		Distance:   1,
-		Message:    "unexpected token",
+		Message:    "unexpected token while attempting to read directive",
 		ParseLevel: ParseLevelError,
 		Contents:   string(content),
 	}
