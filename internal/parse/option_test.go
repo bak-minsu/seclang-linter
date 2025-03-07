@@ -18,6 +18,15 @@ func TestParseOptions(t *testing.T) {
 		wantErr bool
 	}{
 		{
+			name: "NEGATIVE - No options",
+			args: args{
+				contents: []byte(
+					"",
+				),
+			},
+			wantErr: true,
+		},
+		{
 			name: "POSITIVE - Parse single unquoted option",
 			args: args{
 				contents: []byte(
@@ -170,19 +179,35 @@ func TestParseOptions(t *testing.T) {
 			name: "POSITIVE - Parse two quoted options with escaped newline",
 			args: args{
 				contents: []byte(
-					"\"option \\\"A\\\"\"\\\n" +
-						"\"option \\\"B\\\"\"",
+					`"option \"A\""` + "\\\n" +
+						`"option \"B\""`,
 				),
 				offset: 0,
 			},
 			want: []*Option{
 				{
-					Lexeme: "\"option \\\"A\\\"\"",
+					Lexeme: `"option \"A\""`,
 					Offset: 0,
 				},
 				{
-					Lexeme: "\"option \\\"B\\\"\"",
+					Lexeme: `"option \"B\""`,
 					Offset: 16,
+				},
+			},
+		},
+		{
+			name: "POSITIVE - Parse a quoted option with escaped newline",
+			args: args{
+				contents: []byte(
+					`"option` + "\\\n" +
+						`A"`,
+				),
+				offset: 0,
+			},
+			want: []*Option{
+				{
+					Lexeme: `"option` + "\\\n" + `A"`,
+					Offset: 0,
 				},
 			},
 		},
@@ -206,14 +231,14 @@ func TestParseOptions(t *testing.T) {
 			name: "POSITIVE - Parse two quoted options with nonescaped newline",
 			args: args{
 				contents: []byte(
-					"\"option \\\"A\\\"\"\n" +
-						"Directive \"option \\\"B\\\"\"",
+					`"option \"A\""` + "\n" +
+						`Directive "option \"B\""`,
 				),
 				offset: 0,
 			},
 			want: []*Option{
 				{
-					Lexeme: "\"option \\\"A\\\"\"",
+					Lexeme: `"option \"A\""`,
 					Offset: 0,
 				},
 			},
@@ -228,6 +253,59 @@ func TestParseOptions(t *testing.T) {
 			}
 			if diff := deep.Equal(got, tt.want); diff != nil {
 				t.Error(diff)
+			}
+		})
+	}
+}
+
+func TestOption_Content(t *testing.T) {
+	type fields struct {
+		Lexeme string
+		Offset int
+	}
+	tests := []struct {
+		name   string
+		fields fields
+		want   string
+	}{
+		{
+			name: "POSITIVE - unquoted option",
+			fields: fields{
+				Lexeme: "optionA",
+			},
+			want: "optionA",
+		},
+		{
+			name: "POSITIVE - quoted option",
+			fields: fields{
+				Lexeme: `"option A"`,
+			},
+			want: "option A",
+		},
+		{
+			name: "POSITIVE - quoted option with escaped quote",
+			fields: fields{
+				Lexeme: `"option \"A\""`,
+			},
+			want: `option "A"`,
+		},
+		{
+			name: "POSITIVE - quoted option with escaped newline",
+			fields: fields{
+				Lexeme: `"option` + "\\\n" +
+					`A"`,
+			},
+			want: `option A`,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			o := &Option{
+				Lexeme: tt.fields.Lexeme,
+				Offset: tt.fields.Offset,
+			}
+			if got := o.Content(); got != tt.want {
+				t.Errorf("Option.Content() = %v, want %v", got, tt.want)
 			}
 		})
 	}

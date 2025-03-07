@@ -8,16 +8,11 @@ import (
 // represents a single option of a SecLang directive
 type Option struct {
 	// string value representing the option.
-	// ex.
-	//
+	// Examples:
 	//   - "quoted option"
-	//
 	//   - unquotedOption
-	//
 	//   - multi-line options \
-	//
 	//     "with multi-line \
-	//
 	//     quotes"
 	Lexeme string
 
@@ -25,8 +20,37 @@ type Option struct {
 	Offset int
 }
 
+// Returns the length of the option lexeme
 func (o *Option) Len() int {
 	return len(o.Lexeme)
+}
+
+// returns the option lexeme with the following edits
+// for easier analysis of the option contents:
+//   - without start and end quotes
+//   - escaped newlines converted to space
+//   - escaped double quotes converted to non-escaped double quote
+func (o *Option) Content() string {
+	var (
+		patternNewlineEscaped = regexp.MustCompile(`\\\n`)
+		patternQuoteEscaped   = regexp.MustCompile(`\\"`)
+	)
+
+	content := o.Lexeme
+
+	// trim quotes at the end or start manually, since
+	// strings.Trim will remove repeating characters
+	if content[0] == '"' && content[len(content)-1] == '"' {
+		content = content[1:]
+
+		content = content[:len(content)-1]
+	}
+
+	content = patternNewlineEscaped.ReplaceAllString(content, ` `)
+
+	content = patternQuoteEscaped.ReplaceAllString(content, `"`)
+
+	return content
 }
 
 // parses non quoted option content into option object
@@ -111,6 +135,16 @@ func ParseOptions(contents []byte, offset int) ([]*Option, error) {
 			"trouble parsing options: %w",
 			err,
 		)
+	}
+
+	if len(options) == 0 {
+		return nil, &LinterError{
+			Message:    "expecting directive options",
+			ParseLevel: ParseLevelError,
+			Offset:     offset,
+			Distance:   1,
+			Contents:   string(contents),
+		}
 	}
 
 	return options, nil
