@@ -28,11 +28,13 @@ type LinterError struct {
 	Contents string
 }
 
-// returns offset end, exclusive
+// returns offset value of the
+// end of the content, exclusive
 func (e *LinterError) OffsetEnd() int {
 	return e.Offset + e.Distance
 }
 
+// Implements error interface
 func (e *LinterError) Error() string {
 	var builder strings.Builder
 
@@ -49,65 +51,60 @@ func (e *LinterError) Error() string {
 	builder.WriteString(e.Message)
 	builder.WriteRune('\n')
 
-	contentLines := strings.Split(e.Contents, "\n")
+	patternNewline := regexp.MustCompile(`\n`)
+	leftNewlines := patternNewline.FindAllStringIndex(e.Contents[:e.Offset], -1)
 
-	nonWhiteSpace := regexp.MustCompile(`\S`)
+	column := e.Offset
+	if len(leftNewlines) > 0 {
+		column = e.Offset - leftNewlines[len(leftNewlines)-1][1]
+	}
+
+	builder.WriteString(
+		fmt.Sprintf(
+			"line %d, column %d:\n",
+			len(leftNewlines),
+			column,
+		),
+	)
+
+	builder.WriteString(e.underlined())
+
+	return builder.String()
+}
+
+// returns the error lines underlined with carrots
+func (e *LinterError) underlined() string {
+	var (
+		builder              strings.Builder
+		patternNewline       = regexp.MustCompile(`\n`)
+		patternNotWhiteSpace = regexp.MustCompile(`\S`)
+	)
+
+	leftNewlines := patternNewline.FindAllStringIndex(e.Contents[:e.Offset], -1)
+	innerNewlines := patternNewline.FindAllStringIndex(e.Contents[e.Offset:e.OffsetEnd()], -1)
+	lastNewlines := patternNewline.FindAllStringIndex(e.Contents, len(leftNewlines)+len(innerNewlines)+1)
 
 	lineStartOffset := 0
-	offsetStart := e.Offset
-	for lineNumber, subContent := range contentLines {
-		// +1 to account for newline character
-		lineEndOffset := lineStartOffset + len(subContent)
+	if len(leftNewlines) != 0 {
+		lineStartOffset = leftNewlines[len(leftNewlines)-1][1]
+	}
 
-		if lineEndOffset < e.Offset {
-			continue
-		}
+	lineEndOffset := 0
+	if len(lastNewlines) == len(leftNewlines)+len(innerNewlines) {
+		lineEndOffset = len(e.Contents)
+	} else {
+		lineEndOffset = lastNewlines[len(lastNewlines)-1][0]
+	}
 
-		lineIndicator := fmt.Sprintf(
-			"line %d:",
-			lineNumber,
-		)
+	spaces := patternNotWhiteSpace.ReplaceAllString(e.Contents[lineStartOffset:e.Offset], " ")
+	carrots := patternNotWhiteSpace.ReplaceAllString(e.Contents[e.Offset:e.OffsetEnd()], "^")
 
-		builder.WriteString(
-			fmt.Sprintf(
-				"%s %s\n",
-				lineIndicator,
-				subContent,
-			),
-		)
+	underlineLines := strings.Split(spaces+carrots, "\n")
+	contentLines := strings.Split(e.Contents[lineStartOffset:lineEndOffset], "\n")
 
-		spaceContent := nonWhiteSpace.ReplaceAllString(subContent, " ")
-		carrotContent := nonWhiteSpace.ReplaceAllString(subContent, "^")
-
-		localStartOffset := offsetStart - lineStartOffset
-
-		if e.OffsetEnd() <= lineEndOffset {
-			underline := spaceContent[:localStartOffset] +
-				carrotContent[localStartOffset:e.OffsetEnd()-lineStartOffset]
-
-			builder.WriteString(
-				fmt.Sprintf(
-					"%s %s\n",
-					strings.Repeat(" ", len(lineIndicator)),
-					underline,
-				),
-			)
-
-			break
-		}
-
-		underline := spaceContent[:localStartOffset] + carrotContent[localStartOffset:]
-
-		builder.WriteString(
-			fmt.Sprintf(
-				"%s %s\n",
-				strings.Repeat(" ", len(lineIndicator)),
-				underline,
-			),
-		)
-
-		offsetStart = lineEndOffset + 1
-		lineStartOffset = lineEndOffset + 1
+	for i := range len(contentLines) {
+		builder.WriteString(contentLines[i] + "\n")
+		builder.WriteString(underlineLines[i] + "\n")
 	}
 
 	return builder.String()
