@@ -136,6 +136,28 @@ func TestLinterError_Error(t *testing.T) {
 				"",
 			),
 		},
+		{
+			name: "POSITIVE - long single-line text error",
+			fields: fields{
+				Offset:     16,
+				Distance:   71,
+				Message:    "This column is wrong",
+				ParseLevel: ParseLevelError,
+				Content: joinString(
+					`SecRule optionA "this single option is way too long so it will be split into two lines"`,
+				),
+			},
+			want: joinString(
+				"",
+				"Error: This column is wrong",
+				"line 0, column 16:",
+				`SecRule optionA "this single option is way too long so it will be split into two`,
+				`                ^^^^^ ^^^^^^ ^^^^^^ ^^ ^^^ ^^^ ^^^^ ^^ ^^ ^^^^ ^^ ^^^^^ ^^^^ ^^^`,
+				`     lines"`,
+				`     ^^^^^^`,
+				"",
+			),
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

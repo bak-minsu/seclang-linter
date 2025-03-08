@@ -103,9 +103,45 @@ func (e *LinterError) underlined() string {
 	contentLines := strings.Split(e.Contents[lineStartOffset:lineEndOffset], "\n")
 
 	for i := range len(contentLines) {
-		builder.WriteString(contentLines[i] + "\n")
-		builder.WriteString(underlineLines[i] + "\n")
+		if len(contentLines[i]) <= 80 {
+			builder.WriteString(contentLines[i] + "\n")
+			builder.WriteString(underlineLines[i] + "\n")
+
+			continue
+		}
+
+		splitContentLine := splitLongLine(contentLines[i])
+		splitUnderlineLine := splitLongLine(underlineLines[i])
+
+		for j := range len(splitContentLine) {
+			builder.WriteString(splitContentLine[j] + "\n")
+			builder.WriteString(splitUnderlineLine[j] + "\n")
+		}
 	}
 
 	return builder.String()
+}
+
+// splits line with newline character and some spaces
+// if the line is long
+func splitLongLine(line string) []string {
+	lines := make([]string, 0, len(line)/80)
+
+	for i := 0; i < len(line); i += 80 {
+		prefix := ""
+
+		if i != 0 {
+			prefix = "    "
+		}
+
+		if i+80 > len(line) {
+			lines = append(lines, prefix+line[i:])
+
+			continue
+		}
+
+		lines = append(lines, prefix+line[i:i+80])
+	}
+
+	return lines
 }
