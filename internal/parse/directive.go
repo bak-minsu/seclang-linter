@@ -170,7 +170,7 @@ func parseDirectives(content []byte, offset int, directives []*Directive) ([]*Di
 
 	var (
 		patternWhitespace = regexp.MustCompile(`^\s+`)
-		patternComment    = regexp.MustCompile(`^#[^\r\n]+`)
+		patternComment    = regexp.MustCompile(`^#[^\r\n]*`)
 		patternDirective  = regexp.MustCompile(`^[[:alpha:]]+`)
 	)
 
