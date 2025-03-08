@@ -35,7 +35,7 @@ func TestLinterError_Error(t *testing.T) {
 			want: joinString(
 				"",
 				"Error: This column is wrong",
-				"line 0, column 0:",
+				"line 1, column 0:",
 				"SecRule optionA optionB",
 				"^",
 				"",
@@ -53,7 +53,7 @@ func TestLinterError_Error(t *testing.T) {
 			want: joinString(
 				"",
 				"Error: This column is wrong",
-				"line 0, column 1:",
+				"line 1, column 1:",
 				"	SecRule optionA optionB",
 				"	^",
 				"",
@@ -71,7 +71,7 @@ func TestLinterError_Error(t *testing.T) {
 			want: joinString(
 				"",
 				"Error: This column is wrong",
-				"line 0, column 4:",
+				"line 1, column 4:",
 				"    SecRule optionA optionB",
 				"    ^",
 				"",
@@ -89,7 +89,7 @@ func TestLinterError_Error(t *testing.T) {
 			want: joinString(
 				"",
 				"Error: This column is wrong",
-				"line 0, column 0:",
+				"line 1, column 0:",
 				"SecRule optionA optionB",
 				"^^^^^^^",
 				"",
@@ -107,7 +107,7 @@ func TestLinterError_Error(t *testing.T) {
 			want: joinString(
 				"",
 				"Error: This column is wrong",
-				"line 0, column 2:",
+				"line 1, column 2:",
 				"  SecRule optionA optionB",
 				"  ^^^^^^^",
 				"",
@@ -128,7 +128,7 @@ func TestLinterError_Error(t *testing.T) {
 			want: joinString(
 				"",
 				"Error: This column is wrong",
-				"line 0, column 16:",
+				"line 1, column 16:",
 				`SecRule optionA "this option`,
 				`                ^^^^^ ^^^^^^`,
 				`    is long"`,
@@ -150,7 +150,7 @@ func TestLinterError_Error(t *testing.T) {
 			want: joinString(
 				"",
 				"Error: This column is wrong",
-				"line 0, column 16:",
+				"line 1, column 16:",
 				`SecRule optionA "this single option is way too long so it will be split into two`,
 				`                ^^^^^ ^^^^^^ ^^^^^^ ^^ ^^^ ^^^ ^^^^ ^^ ^^ ^^^^ ^^ ^^^^^ ^^^^ ^^^`,
 				`     lines"`,

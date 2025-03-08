@@ -62,7 +62,7 @@ func (e *LinterError) Error() string {
 	builder.WriteString(
 		fmt.Sprintf(
 			"line %d, column %d:\n",
-			len(leftNewlines),
+			len(leftNewlines)+1,
 			column,
 		),
 	)
