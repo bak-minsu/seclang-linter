@@ -3,7 +3,7 @@ package cli
 import (
 	"fmt"
 
-	"github.com/bak-minsu/seclang-linter/internal/parse"
+	"github.com/bak-minsu/seclang-linter/pkg/parse"
 	"github.com/spf13/cobra"
 )
 
