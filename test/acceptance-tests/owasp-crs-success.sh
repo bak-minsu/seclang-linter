@@ -30,4 +30,12 @@ validating file ./test/testdata/owasp-crs/RESPONSE-959-BLOCKING-EVALUATION.conf.
 validating file ./test/testdata/owasp-crs/RESPONSE-980-CORRELATION.conf.........success!
 "
 
-diff <(echo ${output}) <(echo ${expected})
+result=$(diff <(echo ${output}) <(echo ${expected}))
+
+if [ ! -z ${result} ]; then
+    echo "test failed: ${result}"
+
+    exit 1
+fi
+
+exit 0
