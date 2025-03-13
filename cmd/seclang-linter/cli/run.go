@@ -21,7 +21,7 @@ var runCmd = &cobra.Command{
 	Short: "Runs linter on given paths",
 	Long:  runDescription,
 	Run: func(cmd *cobra.Command, args []string) {
-		if _, err := parse.ParseFile(args[0]); err != nil {
+		if _, err := parse.ParseGlob(args...); err != nil {
 			fmt.Println(err)
 		}
 	},
