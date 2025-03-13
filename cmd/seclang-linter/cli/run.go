@@ -13,7 +13,6 @@ Given paths can be any of the following:
 - Path to a file
 - Path to a directory containing only seclang files
 - Glob path, ex. "./some/path/*"
-- Triple dot path, ex. "./..."
 `
 
 var runCmd = &cobra.Command{
